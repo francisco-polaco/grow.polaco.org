@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Compound Interest Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0e1311;
+    --bg-elev: #161d1a;
+    --bg-elev-2: #1d2723;
+    --line: #2a3531;
+    --ink: #e9efe9;
+    --ink-soft: #9fb0a8;
+    --ink-faint: #6b7d76;
+    --accent: #3ddc84;
+    --accent-dim: #1f6b45;
+    --gold: #d8b25e;
+    --danger: #e2725b;
+    --radius: 14px;
+    --shadow: 0 18px 50px -20px rgba(0,0,0,.7);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(61,220,132,.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(216,178,94,.07), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 26px; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--accent); margin: 0;
+  }
+  header { margin-bottom: 34px; }
+  h1 {
+    font-family: "Fraunces", serif;
+    font-weight: 600; font-size: clamp(34px, 5vw, 54px);
+    line-height: 1.02; margin: 0; letter-spacing: -.01em;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+  .sub { color: var(--ink-soft); margin: 14px 0 0; max-width: 60ch; }
+
+  /* segmented controls */
+  .seg {
+    display: inline-flex; background: var(--bg-elev-2);
+    border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px;
+  }
+  .seg button {
+    font: inherit; font-size: 13px; font-weight: 500; color: var(--ink-soft);
+    background: transparent; border: 0; padding: 7px 14px; border-radius: 7px;
+    cursor: pointer; transition: background .15s, color .15s; white-space: nowrap;
+  }
+  .seg button:hover { color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #0e1311; }
+  .seg.lang button { font-family: "IBM Plex Mono", monospace; letter-spacing: .06em; padding: 6px 11px; }
+
+  .grid {
+    display: grid; gap: 22px;
+    grid-template-columns: 380px 1fr;
+    align-items: start;
+  }
+  @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 26px;
+    box-shadow: var(--shadow);
+  }
+  .panel h2 {
+    font-family: "Fraunces", serif; font-weight: 500;
+    font-size: 20px; margin: 0 0 20px; letter-spacing: -.01em;
+  }
+
+  .field { margin-bottom: 18px; }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    display: block; font-size: 13px; font-weight: 500;
+    color: var(--ink-soft); margin-bottom: 7px;
+  }
+  .input-shell {
+    display: flex; align-items: center;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .input-shell:focus-within { border-color: var(--accent-dim); box-shadow: 0 0 0 3px rgba(61,220,132,.12); }
+  .input-shell.invalid { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(226,114,91,.14); }
+  .affix {
+    padding: 0 13px; color: var(--ink-faint);
+    font-family: "IBM Plex Mono", monospace; font-size: 14px; user-select: none;
+  }
+  input[type="number"] {
+    flex: 1; width: 100%;
+    background: transparent; border: 0; outline: 0; color: var(--ink);
+    font-family: "IBM Plex Mono", monospace; font-size: 16px;
+    padding: 12px 14px 12px 0; -moz-appearance: textfield;
+  }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input::placeholder { color: var(--ink-faint); opacity: .7; }
+  .affix + input { padding-left: 0; }
+  .hint { font-size: 11.5px; color: var(--ink-faint); margin: 6px 2px 0; }
+  .err { font-size: 11.5px; color: var(--danger); margin: 6px 2px 0; display: none; }
+  .err.show { display: block; }
+
+  .results { display: grid; gap: 22px; }
+
+  .viewbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .viewbar .vlabel { font-size: 13px; color: var(--ink-faint); font-family: "IBM Plex Mono", monospace; letter-spacing: .04em; text-transform: uppercase; }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 560px) { .cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--bg-elev); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; position: relative; overflow: hidden;
+  }
+  .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--line); }
+  .card.total::before { background: var(--accent); }
+  .card.contrib::before { background: var(--gold); }
+  .card.interest::before { background: linear-gradient(var(--accent), var(--gold)); }
+  .card .k { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 8px; }
+  .card .v {
+    font-family: "Fraunces", serif; font-weight: 600;
+    font-size: clamp(24px, 3.2vw, 32px); letter-spacing: -.01em; font-variant-numeric: tabular-nums;
+  }
+  .card.total .v { color: var(--accent); }
+  .card .meta { font-size: 12.5px; color: var(--ink-faint); margin-top: 6px; font-family: "IBM Plex Mono", monospace; }
+
+  .chart-panel { padding-top: 22px; }
+  .chart-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+  .legend { display: flex; gap: 18px; font-size: 12.5px; color: var(--ink-soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .dot.g { background: var(--gold); }
+  .dot.a { background: var(--accent); }
+  .chart-box { position: relative; height: 340px; margin-top: 8px; }
+
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 720px) { .twocol { grid-template-columns: 1fr; } }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 11px 0; border-bottom: 1px dashed var(--line); gap: 12px; }
+  .stat-row:last-child { border-bottom: 0; }
+  .stat-row .l { color: var(--ink-soft); font-size: 14px; }
+  .stat-row .r { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; font-weight: 500; text-align: right; }
+  .stat-row .r.big { font-size: 18px; }
+  .stat-row .r.pos { color: var(--accent); }
+  .stat-row .r.neg { color: var(--danger); }
+  .note { font-size: 12px; color: var(--ink-faint); margin-top: 16px; line-height: 1.5; }
+  .note code { font-family: "IBM Plex Mono", monospace; color: var(--ink-soft); background: var(--bg-elev-2); padding: 1px 5px; border-radius: 4px; }
+
+  footer { margin-top: 48px; color: var(--ink-faint); font-size: 12.5px; text-align: center; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <p class="eyebrow" data-i18n="eyebrow">Compound interest</p>
+    <div class="seg lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="pt" aria-pressed="false">PT</button>
+    </div>
+  </div>
+
+  <header>
+    <h1><span data-i18n="h1a">Watch your money</span> <em data-i18n="h1b">compound</em>.</h1>
+    <p class="sub" data-i18n="sub">Project the growth of a lump sum plus regular monthly contributions, then see what's left after tax and what a 4% withdrawal sustains. Fields default to long-run S&amp;P 500 assumptions.</p>
+  </header>
+
+  <div class="grid">
+    <!-- INPUTS -->
+    <section class="panel" aria-label="Inputs">
+      <h2 data-i18n="plan">Your plan</h2>
+
+      <div class="field">
+        <label for="lump" data-i18n="lbl_lump">Initial lump sum</label>
+        <div class="input-shell"><span class="affix">€</span><input id="lump" type="number" inputmode="decimal" placeholder="10000" min="0" step="any" /></div>
+        <p class="err" id="lump-err"></p>
+      </div>
+
+      <div class="field">
+        <label for="monthly" data-i18n="lbl_monthly">Monthly contribution</label>
+        <div class="input-shell"><span class="affix">€</span><input id="monthly" type="number" inputmode="decimal" placeholder="500" min="0" step="any" /></div>
+        <p class="err" id="monthly-err"></p>
+      </div>
+
+      <div class="field">
+        <label for="years" data-i18n="lbl_years">Investment horizon</label>
+        <div class="input-shell"><input id="years" type="number" inputmode="numeric" placeholder="30" min="1" max="100" step="1" /><span class="affix" data-i18n="u_years">years</span></div>
+        <p class="err" id="years-err"></p>
+      </div>
+
+      <div class="field">
+        <label for="rate" data-i18n="lbl_rate">Expected yearly return</label>
+        <div class="input-shell"><input id="rate" type="number" inputmode="decimal" placeholder="10" step="any" /><span class="affix" data-i18n="u_peryr">% / yr</span></div>
+        <p class="hint" data-i18n="hint_rate">Effective annual rate. S&amp;P 500 nominal long-run average ≈ 10%.</p>
+        <p class="err" id="rate-err"></p>
+      </div>
+
+      <div class="field">
+        <label for="infl" data-i18n="lbl_infl">Annual inflation</label>
+        <div class="input-shell"><input id="infl" type="number" inputmode="decimal" placeholder="2.5" min="0" max="50" step="any" /><span class="affix" data-i18n="u_peryr2">% / yr</span></div>
+        <p class="hint" data-i18n="hint_infl">Used for the "today's money" view. Euro-area target ≈ 2%.</p>
+        <p class="err" id="infl-err"></p>
+      </div>
+
+      <div class="field">
+        <label for="tax" data-i18n="lbl_tax">Capital gains tax</label>
+        <div class="input-shell"><input id="tax" type="number" inputmode="decimal" placeholder="28" min="0" max="100" step="any" /><span class="affix" data-i18n="u_ongains">% on gains</span></div>
+        <p class="hint" data-i18n="hint_tax">PT mais-valias default = 28%. Applied to profit only.</p>
+        <p class="err" id="tax-err"></p>
+      </div>
+
+      <div class="field">
+        <label for="swr" data-i18n="lbl_swr">Safe withdrawal rate</label>
+        <div class="input-shell"><input id="swr" type="number" inputmode="decimal" placeholder="4" min="0" max="100" step="any" /><span class="affix" data-i18n="u_peryr3">% / yr</span></div>
+        <p class="hint" data-i18n="hint_swr">The "4% rule" annual drawdown.</p>
+        <p class="err" id="swr-err"></p>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <div class="results">
+      <div class="viewbar">
+        <span class="vlabel" data-i18n="view_label">View</span>
+        <div class="seg view" role="group" aria-label="View mode">
+          <button type="button" data-view="nominal" aria-pressed="true" data-i18n="view_nominal">Nominal</button>
+          <button type="button" data-view="real" aria-pressed="false" data-i18n="view_real">Today's money</button>
+        </div>
+      </div>
+
+      <div class="cards">
+        <div class="card total">
+          <p class="k" data-i18n="card_final">Final value</p>
+          <p class="v" id="r-final">—</p>
+          <p class="meta" id="r-final-meta"></p>
+        </div>
+        <div class="card contrib">
+          <p class="k" data-i18n="card_yourmoney">Your money</p>
+          <p class="v" id="r-contrib">—</p>
+          <p class="meta" data-i18n="card_contributed">Total contributed</p>
+        </div>
+        <div class="card interest">
+          <p class="k" data-i18n="card_interest">Interest gained</p>
+          <p class="v" id="r-interest">—</p>
+          <p class="meta" id="r-interest-meta"></p>
+        </div>
+      </div>
+
+      <section class="panel chart-panel">
+        <div class="chart-head">
+          <h2 style="margin:0;" data-i18n="chart_title">Growth over time</h2>
+          <div class="legend">
+            <span><i class="dot g"></i><span data-i18n="leg_contrib">Contributions</span></span>
+            <span><i class="dot a"></i><span data-i18n="leg_interest">Interest</span></span>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="chart"></canvas></div>
+      </section>
+
+      <div class="twocol">
+        <section class="panel">
+          <h2 data-i18n="redeem_title">After redeeming</h2>
+          <div class="stat-row"><span class="l" data-i18n="redeem_gross">Gross final value</span><span class="r" id="t-gross">—</span></div>
+          <div class="stat-row"><span class="l" data-i18n="redeem_gain">Taxable gain</span><span class="r" id="t-gain">—</span></div>
+          <div class="stat-row"><span class="l"><span data-i18n="redeem_tax">Tax due</span> <span id="t-rate"></span></span><span class="r neg" id="t-tax">—</span></div>
+          <div class="stat-row"><span class="l"><strong data-i18n="redeem_net">Net in your pocket</strong></span><span class="r big pos" id="t-net">—</span></div>
+        </section>
+
+        <section class="panel">
+          <h2 data-i18n="rule_title">The 4% rule</h2>
+          <div class="stat-row"><span class="l" data-i18n="rule_annual_g">Annual income (gross)</span><span class="r big pos" id="w-annual">—</span></div>
+          <div class="stat-row"><span class="l" data-i18n="rule_monthly_g">Monthly income (gross)</span><span class="r" id="w-monthly">—</span></div>
+          <div class="stat-row"><span class="l" data-i18n="rule_annual_n">Annual income (post-tax)</span><span class="r" id="w-annual-net">—</span></div>
+          <div class="stat-row"><span class="l" data-i18n="rule_monthly_n">Monthly income (post-tax)</span><span class="r" id="w-monthly-net">—</span></div>
+          <p class="note" data-i18n="rule_note">Sustainable drawdown at the rate above, applied to the final balance. Post-tax figures assume each withdrawal is taxed at the gains rate — a rough upper bound, since real withdrawals mix principal and profit.</p>
+        </section>
+      </div>
+
+      <p class="note" id="assumptions"></p>
+    </div>
+  </div>
+
+  <footer>
+    <span data-i18n="foot1">Estimates only — not financial advice. Returns are assumed constant; real markets are not.</span><br/>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+(function () {
+  /* ----------------------------- i18n ----------------------------- */
+  const STR = {
+    en: {
+      title: "Compound Interest Calculator",
+      eyebrow: "Compound interest",
+      h1a: "Watch your money", h1b: "compound",
+      sub: "Project the growth of a lump sum plus regular monthly contributions, then see what's left after tax and what a 4% withdrawal sustains. Fields default to long-run S&P 500 assumptions.",
+      plan: "Your plan",
+      lbl_lump: "Initial lump sum",
+      lbl_monthly: "Monthly contribution",
+      lbl_years: "Investment horizon", u_years: "years",
+      lbl_rate: "Expected yearly return", u_peryr: "% / yr",
+      hint_rate: "Effective annual rate. S&P 500 nominal long-run average ≈ 10%.",
+      lbl_infl: "Annual inflation", u_peryr2: "% / yr",
+      hint_infl: "Used for the \u201Ctoday's money\u201D view. Euro-area target \u2248 2%.",
+      lbl_tax: "Capital gains tax", u_ongains: "% on gains",
+      hint_tax: "PT mais-valias default = 28%. Applied to profit only.",
+      lbl_swr: "Safe withdrawal rate", u_peryr3: "% / yr",
+      hint_swr: "The \u201C4% rule\u201D annual drawdown.",
+      view_label: "View", view_nominal: "Nominal", view_real: "Today's money",
+      card_final: "Final value", card_yourmoney: "Your money", card_contributed: "Total contributed",
+      card_interest: "Interest gained",
+      chart_title: "Growth over time", leg_contrib: "Contributions", leg_interest: "Interest",
+      redeem_title: "After redeeming", redeem_gross: "Gross final value", redeem_gain: "Taxable gain",
+      redeem_tax: "Tax due", redeem_net: "Net in your pocket",
+      rule_title: "The 4% rule",
+      rule_annual_g: "Annual income (gross)", rule_monthly_g: "Monthly income (gross)",
+      rule_annual_n: "Annual income (post-tax)", rule_monthly_n: "Monthly income (post-tax)",
+      rule_note: "Sustainable drawdown at the rate above, applied to the final balance. Post-tax figures assume each withdrawal is taxed at the gains rate — a rough upper bound, since real withdrawals mix principal and profit.",
+      foot1: "Estimates only — not financial advice. Returns are assumed constant; real markets are not.",
+      meta_final: "{years} yrs @ {rate}/yr",
+      meta_interest: "{x} on top of contributions",
+      real_tag: "today's money",
+      ax_years: "Years", tt_year: "Year {y}", tt_total: "Total",
+      assume: "Assumptions: monthly compounding (<code>(1+r)^(1/12)\u22121</code>), contributions at month end, lump sum at t=0, constant {rate} annual return, tax on nominal gains only. {mode}",
+      mode_nominal: "All values nominal (not inflation-adjusted).",
+      mode_real: "Values shown in today's money, deflated at {infl} inflation; tax computed on nominal gains.",
+    },
+    pt: {
+      title: "Calculadora de Juro Composto",
+      eyebrow: "Juro composto",
+      h1a: "Veja o seu dinheiro a", h1b: "capitalizar",
+      sub: "Projete o crescimento de um montante inicial mais contribuições mensais regulares e veja o que sobra após impostos e o que um levantamento de 4% permite sustentar. Os campos assumem por omissão os pressupostos de longo prazo do S&P 500.",
+      plan: "O seu plano",
+      lbl_lump: "Montante inicial",
+      lbl_monthly: "Contribuição mensal",
+      lbl_years: "Horizonte de investimento", u_years: "anos",
+      lbl_rate: "Retorno anual esperado", u_peryr: "% / ano",
+      hint_rate: "Taxa anual efetiva. Média histórica de longo prazo do S&P 500 \u2248 10%.",
+      lbl_infl: "Inflação anual", u_peryr2: "% / ano",
+      hint_infl: "Usada na vista \u201Cdinheiro de hoje\u201D. Objetivo da zona euro \u2248 2%.",
+      lbl_tax: "Imposto sobre mais-valias", u_ongains: "% sobre ganhos",
+      hint_tax: "Mais-valias PT por omissão = 28%. Aplicado apenas ao lucro.",
+      lbl_swr: "Taxa de levantamento segura", u_peryr3: "% / ano",
+      hint_swr: "A \u201Cregra dos 4%\u201D de levantamento anual.",
+      view_label: "Vista", view_nominal: "Nominal", view_real: "Dinheiro de hoje",
+      card_final: "Valor final", card_yourmoney: "O seu dinheiro", card_contributed: "Total contribuído",
+      card_interest: "Juros ganhos",
+      chart_title: "Crescimento ao longo do tempo", leg_contrib: "Contribuições", leg_interest: "Juros",
+      redeem_title: "Após resgate", redeem_gross: "Valor final bruto", redeem_gain: "Ganho tributável",
+      redeem_tax: "Imposto devido", redeem_net: "Líquido no seu bolso",
+      rule_title: "A regra dos 4%",
+      rule_annual_g: "Rendimento anual (bruto)", rule_monthly_g: "Rendimento mensal (bruto)",
+      rule_annual_n: "Rendimento anual (após impostos)", rule_monthly_n: "Rendimento mensal (após impostos)",
+      rule_note: "Levantamento sustentável à taxa acima, aplicado ao saldo final. Os valores após impostos assumem que cada levantamento é tributado à taxa de mais-valias — um limite superior aproximado, já que os levantamentos reais misturam capital e lucro.",
+      foot1: "Apenas estimativas — não constitui aconselhamento financeiro. Assume-se um retorno constante; os mercados reais não são constantes.",
+      meta_final: "{years} anos @ {rate}/ano",
+      meta_interest: "{x} acima das contribuições",
+      real_tag: "dinheiro de hoje",
+      ax_years: "Anos", tt_year: "Ano {y}", tt_total: "Total",
+      assume: "Pressupostos: capitalização mensal (<code>(1+r)^(1/12)\u22121</code>), contribuições no fim do mês, montante inicial em t=0, retorno anual constante de {rate}, imposto apenas sobre ganhos nominais. {mode}",
+      mode_nominal: "Todos os valores são nominais (não ajustados à inflação).",
+      mode_real: "Valores em dinheiro de hoje, deflacionados a {infl} de inflação; imposto calculado sobre ganhos nominais.",
+    },
+  };
+
+  let lang = "en";
+  let realMode = false;
+
+  const t = (key) => (STR[lang] && STR[lang][key]) || STR.en[key] || key;
+  const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? vars[k] : ""));
+
+  /* --------------------------- formatting ------------------------- */
+  // Currency / number formatting stays EUR + pt-PT regardless of UI language.
+  const fmt = new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  const fmt2 = new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pct = (n) => new Intl.NumberFormat("pt-PT", { maximumFractionDigits: 2 }).format(n) + "%";
+
+  /* ----------------------------- inputs --------------------------- */
+  const FIELDS = {
+    lump:    { min: 0,   max: 1e12, integer: false },
+    monthly: { min: 0,   max: 1e9,  integer: false },
+    years:   { min: 1,   max: 100,  integer: true },
+    rate:    { min: -50, max: 100,  integer: false },
+    infl:    { min: 0,   max: 50,   integer: false },
+    tax:     { min: 0,   max: 100,  integer: false },
+    swr:     { min: 0,   max: 100,  integer: false },
+  };
+
+  const el = {};
+  Object.keys(FIELDS).forEach((id) => { el[id] = document.getElementById(id); });
+
+  /** Read a field, falling back to its placeholder (the S&P 500 default) when empty. */
+  function read(id) {
+    const cfg = FIELDS[id];
+    const node = el[id];
+    const raw = (node.value.trim() === "" ? node.placeholder : node.value.trim()).replace(",", ".");
+    const num = Number(raw);
+    if (raw === "" || Number.isNaN(num)) return { value: NaN, ok: false };
+    if (cfg.integer && !Number.isInteger(num)) return { value: num, ok: false };
+    if (num < cfg.min || num > cfg.max) return { value: num, ok: false };
+    return { value: num, ok: true };
+  }
+
+  function setError(id, bad) {
+    const shell = el[id].closest(".input-shell");
+    shell.classList.toggle("invalid", bad);
+  }
+
+  /* --------------------------- simulation ------------------------- */
+  /**
+   * Month-by-month projection, returning both nominal and real (today's-money) views.
+   * Real contributions use the present value of each payment; real balance deflates the pot.
+   */
+  function simulate({ lump, monthly, years, rate, infl }) {
+    const months = Math.round(years * 12);
+    const mRate = Math.pow(1 + rate / 100, 1 / 12) - 1;
+    const mInfl = Math.pow(1 + infl / 100, 1 / 12) - 1;
+
+    let balance = lump, infFactor = 1, realContrib = 0;
+    const labels = ["0"];
+    const nomContrib = [lump], nomTotal = [lump];
+    const realContribArr = [lump], realTotal = [lump];
+
+    for (let m = 1; m <= months; m++) {
+      balance = balance * (1 + mRate) + monthly;     // end-of-month contribution
+      infFactor *= (1 + mInfl);
+      realContrib += monthly / infFactor;            // present value of this payment
+      if (m % 12 === 0) {
+        labels.push(String(m / 12));
+        nomContrib.push(lump + monthly * m);
+        nomTotal.push(balance);
+        realContribArr.push(lump + realContrib);
+        realTotal.push(balance / infFactor);
+      }
+    }
+
+    const contributedNom = lump + monthly * months;
+    const contributedReal = lump + realContrib;
+
+    return {
+      years, infl,
+      nominal: {
+        final: balance, contributed: contributedNom, interest: balance - contributedNom,
+        series: { labels, contrib: nomContrib, total: nomTotal },
+      },
+      real: {
+        final: balance / infFactor, contributed: contributedReal, interest: balance / infFactor - contributedReal,
+        series: { labels, contrib: realContribArr, total: realTotal },
+      },
+    };
+  }
+
+  /* ----------------------------- chart ---------------------------- */
+  let chart = null;
+
+  function renderChart(series) {
+    const ctx = document.getElementById("chart").getContext("2d");
+    const css = getComputedStyle(document.documentElement);
+    const gold = css.getPropertyValue("--gold").trim();
+    const accent = css.getPropertyValue("--accent").trim();
+    const grid = "rgba(255,255,255,0.05)";
+    const ink = css.getPropertyValue("--ink-soft").trim();
+
+    // Clamp so the stacked areas always sum to the balance, even in real terms.
+    const goldData = series.contrib.map((c, i) => Math.min(c, series.total[i]));
+    const greenData = series.total.map((tot, i) => Math.max(0, tot - series.contrib[i]));
+
+    const data = {
+      labels: series.labels,
+      datasets: [
+        { label: t("leg_contrib"), data: goldData, backgroundColor: gold + "33", borderColor: gold, borderWidth: 2, fill: true, tension: 0.25, pointRadius: 0, pointHoverRadius: 4 },
+        { label: t("leg_interest"), data: greenData, backgroundColor: accent + "33", borderColor: accent, borderWidth: 2, fill: true, tension: 0.25, pointRadius: 0, pointHoverRadius: 4 },
+      ],
+    };
+
+    const opts = {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: { stacked: true, grid: { color: grid }, ticks: { color: ink, maxRotation: 0, autoSkipPadding: 16 }, title: { display: true, text: t("ax_years"), color: ink } },
+        y: { stacked: true, grid: { color: grid }, ticks: { color: ink, callback: (v) => fmt.format(v) } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#0e1311", borderColor: "#2a3531", borderWidth: 1, padding: 12,
+          titleColor: "#e9efe9", bodyColor: "#9fb0a8",
+          callbacks: {
+            title: (items) => fill(t("tt_year"), { y: items[0].label }),
+            label: (item) => " " + item.dataset.label + ": " + fmt2.format(item.raw),
+            afterBody: (items) => "\n" + t("tt_total") + ": " + fmt2.format(items.reduce((s, i) => s + i.raw, 0)),
+          },
+        },
+      },
+    };
+
+    if (chart) { chart.data = data; chart.options = opts; chart.update(); }
+    else { chart = new Chart(ctx, { type: "line", data, options: opts }); }
+  }
+
+  /* ---------------------------- calculate ------------------------- */
+  function calculate() {
+    const inputs = {};
+    let allOk = true;
+    for (const id of Object.keys(FIELDS)) {
+      const res = read(id);
+      const typed = el[id].value.trim() !== "";
+      setError(id, typed && !res.ok);
+      if (!res.ok) allOk = false;
+      inputs[id] = res.value;
+    }
+    if (!allOk) return;
+
+    const sim = simulate(inputs);
+    const view = realMode ? sim.real : sim.nominal;
+    const deflatorN = Math.pow(1 + inputs.infl / 100, -inputs.years);
+
+    // Headline cards
+    document.getElementById("r-final").textContent = fmt.format(view.final);
+    let finalMeta = fill(t("meta_final"), { years: inputs.years, rate: pct(inputs.rate) });
+    if (realMode) finalMeta += " · " + t("real_tag");
+    document.getElementById("r-final-meta").textContent = finalMeta;
+
+    document.getElementById("r-contrib").textContent = fmt.format(view.contributed);
+    document.getElementById("r-interest").textContent = fmt.format(view.interest);
+    const multiple = view.contributed > 0 ? (view.interest / view.contributed) : 0;
+    document.getElementById("r-interest-meta").textContent = fill(t("meta_interest"), { x: pct(multiple * 100) });
+
+    renderChart(view.series);
+
+    // Tax / redemption — tax is on NOMINAL gains, then deflated to today's money if in real mode.
+    const k = realMode ? deflatorN : 1;
+    const grossDisp = sim.nominal.final * k;
+    const gainDisp = Math.max(0, sim.nominal.interest) * k;
+    const taxDisp = Math.max(0, sim.nominal.interest) * (inputs.tax / 100) * k;
+    const netDisp = grossDisp - taxDisp;
+    document.getElementById("t-gross").textContent = fmt2.format(grossDisp);
+    document.getElementById("t-gain").textContent = fmt2.format(gainDisp);
+    document.getElementById("t-rate").textContent = fill("@ {x}", { x: pct(inputs.tax) });
+    document.getElementById("t-tax").textContent = "\u2212 " + fmt2.format(taxDisp);
+    document.getElementById("t-net").textContent = fmt2.format(netDisp);
+
+    // 4% rule — based on the current view's final balance.
+    const annual = view.final * (inputs.swr / 100);
+    const annualNet = annual * (1 - inputs.tax / 100);
+    document.getElementById("w-annual").textContent = fmt.format(annual);
+    document.getElementById("w-monthly").textContent = fmt2.format(annual / 12);
+    document.getElementById("w-annual-net").textContent = fmt.format(annualNet);
+    document.getElementById("w-monthly-net").textContent = fmt2.format(annualNet / 12);
+
+    // Assumptions footnote
+    const mode = realMode
+      ? fill(t("mode_real"), { infl: pct(inputs.infl) })
+      : t("mode_nominal");
+    document.getElementById("assumptions").innerHTML = fill(t("assume"), { rate: pct(inputs.rate), mode });
+  }
+
+  /* ------------------------- apply language ----------------------- */
+  function applyStatic() {
+    document.documentElement.lang = lang === "pt" ? "pt-PT" : "en";
+    document.title = t("title");
+    document.querySelectorAll("[data-i18n]").forEach((n) => { n.textContent = t(n.dataset.i18n); });
+  }
+
+  /* ----------------------------- wiring --------------------------- */
+  Object.values(el).forEach((node) => {
+    node.addEventListener("input", calculate);
+    node.addEventListener("blur", calculate);
+  });
+
+  document.querySelectorAll(".seg.lang button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      lang = btn.dataset.lang;
+      document.querySelectorAll(".seg.lang button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+      applyStatic();
+      calculate(); // refresh dynamic strings + chart labels
+    });
+  });
+
+  document.querySelectorAll(".seg.view button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      realMode = btn.dataset.view === "real";
+      document.querySelectorAll(".seg.view button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+      calculate();
+    });
+  });
+
+  applyStatic();
+  calculate();
+})();
+</script>
+</body>
+</html>
